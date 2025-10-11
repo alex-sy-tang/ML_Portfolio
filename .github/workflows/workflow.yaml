@@ -1,0 +1,43 @@
+name: ml-pipeline-workflow
+
+on:
+  # push: # uncomment to run on push
+  schedule:
+    - cron: "30 17 * * *" # run every day at 30:17AM
+  workflow_dispatch:  # manual triggers
+
+jobs:
+  run-data-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo content
+        uses: actions/checkout@v4
+        # with:
+        #   token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Use the PAT instead of the default GITHUB_TOKEN
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 'Create env file'
+        # run: |
+        #   touch .env
+        #   echo API_ENDPOINT="https://xxx.execute-api.us-west-2.amazonaws.com" >> .env
+        #   echo API_KEY=${{ secrets.API_KEY }} >> .env
+        #   cat .env
+        run: |
+          touch .env
+          echo FMP_API_KEY = ${{secrets.FMP_API_KEY}} >> .env
+          echo ALPHA_VANTAGE_API_KEY = ${{secrets.ALPHA_VANTAGE_API_KEY}} >> .env
+          cat .env
+        shell: bash
+
+      - name: Jupyter Notebook Execution
+        run: jupyter execute notebooks/ML_Portfolio_Management.ipynb
+        shell: bash
+
+        
