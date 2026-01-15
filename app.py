@@ -76,4 +76,8 @@ st.divider()
 st.subheader('Portfolio')
 
 my_portfolio = load_data(DATA_DIR/"processed"/"weekly_portfolio.csv")
+historical_performance = load_data(DATA_DIR/'processed'/'historical_performance.csv')
+# st.line_chart(historical_performance)
 st.dataframe(my_portfolio)
+# st.dataframe(historical_performance)
+
