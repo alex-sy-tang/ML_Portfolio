@@ -73,11 +73,13 @@ st.dataframe(symbol_df)
 
 #Stock Portfolio: 
 st.divider()
-st.subheader('Portfolio')
+st.subheader('My Portfolio')
 
 my_portfolio = load_data(DATA_DIR/"processed"/"weekly_portfolio.csv")
 historical_performance = load_data(DATA_DIR/'processed'/'historical_performance.csv')
-# st.line_chart(historical_performance)
+st.line_chart(historical_performance, x = 'date', y = 'cumulative_return')
 st.dataframe(my_portfolio)
-# st.dataframe(historical_performance)
+# st.dataframe(historical_performance)ååå
+
+# symbol_df['symbol'].unique()
 
