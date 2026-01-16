@@ -41,7 +41,7 @@ st.subheader('Historical Price')
 
 holdings_df = load_data(DATA_DIR/"raw"/"holdings.csv")
 symbols_list = holdings_df["symbol"].tolist()
-selected_symbol = st.selectbox("Symbols", symbols_list)
+selected_symbol = st.selectbox("Symbols from DJIA", symbols_list)
 
 
 historical_price_df = load_data(raw_data_filename)
@@ -73,13 +73,52 @@ st.dataframe(symbol_df)
 
 #Stock Portfolio: 
 st.divider()
-st.subheader('My Portfolio')
+st.subheader('📊 My Portfolio')
 
 my_portfolio = load_data(DATA_DIR/"processed"/"weekly_portfolio.csv")
 historical_performance = load_data(DATA_DIR/'processed'/'historical_performance.csv')
 st.line_chart(historical_performance, x = 'date', y = 'cumulative_return')
-st.dataframe(my_portfolio)
-# st.dataframe(historical_performance)ååå
 
-# symbol_df['symbol'].unique()
+
+m1, m2, m3 = st.columns(3)
+total_balance = round(historical_performance.loc[historical_performance.index[-1],"total_value"],2)
+invested_capital = round(historical_performance.loc[0,"total_value"])
+total_profit_loss = round(total_balance - invested_capital, 2)
+delta = str(round((total_balance - invested_capital) / invested_capital, 2))
+
+m1.metric("💰 Total Balance", total_balance)
+m2.metric("📈 Total Profit/Loss", total_profit_loss, delta= f'{delta} since 2026-01-12')
+m3.metric("🏦 Invested Capital", invested_capital)
+
+st.divider()
+
+data = {
+    "Ticker": list(my_portfolio['symbol'].unique()), 
+    "Allocation": [1 / my_portfolio['symbol'].nunique()] * my_portfolio['symbol'].nunique()
+}
+
+df_asset = pd.DataFrame(data)
+
+fig = px.pie(
+    df_asset, 
+    values='Allocation', 
+    names='Ticker', 
+    title='Portfolio Allocation',
+    hole=0.4, # Optional: makes it a donut chart like some modern designs
+    color_discrete_sequence=px.colors.qualitative.Pastel
+)
+
+fig.update_layout(
+    template="plotly_dark",
+    legend_title="Stocks",
+    margin=dict(l=20, r=20, t=50, b=20)
+)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# st.dataframe(my_portfolio)
+
+# my_portfolio['symbol'].unique
+
+
 
