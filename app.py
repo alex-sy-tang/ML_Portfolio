@@ -16,27 +16,12 @@ raw_data_filename = DATA_DIR/'raw'/'historical_price.csv'
 
 
 
-# def get_most_recent_workday(today_date): 
-#     if today_date.weekday() == 0: 
-#         diff = 3
-#     elif today_date.weekday() == 6: 
-#         diff = 2
-#     else:
-#         diff = 1
-    
-#     last_weekday = today_date - timedelta(days = diff)
-#     return last_weekday
-
 
 
 st.title('Stock Portfolio Dashboard')
-st.subheader('Historical Price')
+st.header('Historical Price')
 
 
-# add_selectbox = st.sidebar.selectbox(
-#     "Pages: ",
-#     ("Historical Price", "Portfolio")
-# )
 
 
 holdings_df = load_data(DATA_DIR/"raw"/"holdings.csv")
@@ -68,12 +53,14 @@ layout = go.Layout(title=f'Candlestick Chart for {selected_symbol}',
 
 fig = go.Figure(data=[candlestick], layout=layout)
 st.plotly_chart(fig)
+
+st.subheader('Raw Data')
 st.dataframe(symbol_df)
 
 
 #Stock Portfolio: 
 st.divider()
-st.subheader('📊 My Portfolio')
+st.header('📊 My Portfolio')
 
 my_portfolio = load_data(DATA_DIR/"processed"/"weekly_portfolio.csv")
 historical_performance = load_data(DATA_DIR/'processed'/'historical_performance.csv')
@@ -103,7 +90,7 @@ fig = px.pie(
     df_asset, 
     values='Allocation', 
     names='Ticker', 
-    title='Portfolio Allocation',
+    title='Weekly Portfolio Allocation',
     hole=0.4, # Optional: makes it a donut chart like some modern designs
     color_discrete_sequence=px.colors.qualitative.Pastel
 )
