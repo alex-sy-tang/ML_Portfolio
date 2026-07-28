@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 from functions import *
 
 
-PROJECT_ROOT = Path('/Users/shengyaotang/Desktop/Quant Project/ML_Portfolio_Management')
+PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT/'data'
 processed_data_filename = DATA_DIR/'processed'/'processed_historical_price.csv'
 raw_data_filename = DATA_DIR/'raw'/'historical_price.csv'
@@ -26,7 +26,7 @@ st.header('Historical Price')
 
 holdings_df = load_data(DATA_DIR/"raw"/"holdings.csv")
 symbols_list = holdings_df["symbol"].tolist()
-selected_symbol = st.selectbox("Symbols from DJIA", symbols_list)
+selected_symbol = st.selectbox("Symbols from S&P 500", symbols_list)
 
 
 historical_price_df = load_data(raw_data_filename)

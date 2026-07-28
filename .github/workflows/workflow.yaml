@@ -23,19 +23,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 'Create env file'
-        # run: |
-        #   touch .env
-        #   echo API_ENDPOINT="https://xxx.execute-api.us-west-2.amazonaws.com" >> .env
-        #   echo API_KEY=${{ secrets.API_KEY }} >> .env
-        #   cat .env
-        run: |
-          touch .env
-          echo FMP_API_KEY = ${{secrets.FMP_API_KEY}} >> .env
-          echo ALPHA_VANTAGE_API_KEY = ${{secrets.ALPHA_VANTAGE_API_KEY}} >> .env
-          cat .env
-        shell: bash
-
       - name: Jupyter Notebook Execution
         run: jupyter execute notebooks/ML_Portfolio_Management.ipynb
         shell: bash

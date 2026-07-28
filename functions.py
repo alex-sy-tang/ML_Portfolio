@@ -16,7 +16,7 @@ except Exception as e:
     raise
 
 # Variables
-PROJECT_ROOT = Path('/Users/shengyaotang/Desktop/Quant Project/ML_Portfolio_Management')
+PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT/'data'
 
 # Load data from csv file
@@ -41,10 +41,23 @@ def get_last_week_data(filename):
     df_last_week = df[df['year_week'] == last_year_week]
     return df_last_week.drop(columns=['year_week'])
 
-def create_weekly_stock_portfolio(*args: pd.DataFrame) -> pd.DataFrame:
-    df_stock_portfolio = pd.concat(args, axis = 1)
-    df_stock_portfolio = df_stock_portfolio.sort_values(by = ['outperform'], ascending = False)
-    df_stock_portfolio = df_stock_portfolio[df_stock_portfolio['prediction'] == 1]
+def create_weekly_stock_portfolio(
+    symbols: pd.Series,
+    predicted_returns: pd.DataFrame,
+    top_quantile: float = 0.2,
+    long_only: bool = True,
+) -> pd.DataFrame:
+    if not long_only:
+        raise NotImplementedError("Short-side portfolio construction is not implemented yet.")
+
+    df_stock_portfolio = pd.concat(
+        [symbols.reset_index(drop=True), predicted_returns.reset_index(drop=True)], axis=1
+    )
+    df_stock_portfolio = df_stock_portfolio.sort_values(by='predicted_return', ascending=False)
+
+    cutoff = max(1, int(len(df_stock_portfolio) * top_quantile))
+    df_stock_portfolio = df_stock_portfolio.head(cutoff)
+
     df_stock_portfolio['weight'] = 1 / len(df_stock_portfolio)
     df_stock_portfolio.to_csv(DATA_DIR/'processed'/'stock_portfolio.csv', index = False)
     return df_stock_portfolio.reset_index(drop = True)
