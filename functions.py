@@ -35,11 +35,8 @@ def load_symbol_price(filename, symbol):
 def get_last_week_data(filename):
     df = load_data(filename)
     df['date'] = pd.to_datetime(df['date'])
-    df['year_week'] = df['date'].dt.strftime('%Y-%U')
-    last_year_week = (datetime.now() - timedelta(weeks = 1)).strftime('%Y-%U')
-
-    df_last_week = df[df['year_week'] == last_year_week]
-    return df_last_week.drop(columns=['year_week'])
+    latest_date = df['date'].max()
+    return df[df['date'] == latest_date]
 
 def create_weekly_stock_portfolio(
     symbols: pd.Series,
