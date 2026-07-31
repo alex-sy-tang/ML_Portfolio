@@ -58,13 +58,31 @@ st.subheader('Raw Data')
 st.dataframe(symbol_df)
 
 
-#Stock Portfolio: 
+#Stock Portfolio:
 st.divider()
 st.header('📊 My Portfolio')
 
 my_portfolio = load_data(DATA_DIR/"processed"/"weekly_portfolio.csv")
 historical_performance = load_data(DATA_DIR/'processed'/'historical_performance.csv')
-st.line_chart(historical_performance, x = 'date', y = 'cumulative_return')
+historical_performance['date'] = pd.to_datetime(historical_performance['date'])
+
+spy_df = load_data(DATA_DIR/"raw"/"spy_price.csv")
+spy_df['date'] = pd.to_datetime(spy_df['date'])
+risk_metrics = calculate_risk_metrics(historical_performance, spy_df)
+
+# SPY cumulative return re-anchored to 0 at the portfolio's own start date, so both
+# lines are comparable on the same chart even though SPY's own history goes back further.
+spy_window = spy_df[(spy_df['date'] >= historical_performance['date'].min()) &
+                     (spy_df['date'] <= historical_performance['date'].max())].copy()
+spy_window['cumulative_return'] = spy_window['close'] / spy_window['close'].iloc[0] - 1
+
+equity_fig = go.Figure()
+equity_fig.add_trace(go.Scatter(x=historical_performance['date'], y=historical_performance['cumulative_return'],
+                                 mode='lines+markers', name='Portfolio'))
+equity_fig.add_trace(go.Scatter(x=spy_window['date'], y=spy_window['cumulative_return'],
+                                 mode='lines', name='SPY', line=dict(dash='dot')))
+equity_fig.update_layout(title='Portfolio vs. SPY — Cumulative Return', xaxis_title='Date', yaxis_title='Cumulative Return')
+st.plotly_chart(equity_fig, use_container_width=True)
 
 
 m1, m2, m3 = st.columns(3)
@@ -77,14 +95,31 @@ m1.metric("💰 Total Balance", total_balance)
 m2.metric("📈 Total Profit/Loss", total_profit_loss, delta= f'{delta} since 2026-01-12')
 m3.metric("🏦 Invested Capital", invested_capital)
 
+r1, r2, r3 = st.columns(3)
+r1.metric("📐 Sharpe", f"{risk_metrics['sharpe']:.2f}" if pd.notna(risk_metrics['sharpe']) else "N/A")
+r2.metric("📉 Sortino", f"{risk_metrics['sortino']:.2f}" if pd.notna(risk_metrics['sortino']) else "N/A")
+r3.metric("🌱 CAGR", f"{risk_metrics['cagr']*100:.2f}%" if pd.notna(risk_metrics['cagr']) else "N/A")
+
+r4, r5, r6 = st.columns(3)
+r4.metric("📊 Volatility", f"{risk_metrics['volatility']*100:.2f}%" if pd.notna(risk_metrics['volatility']) else "N/A")
+r5.metric("🔻 Max Drawdown", f"{risk_metrics['max_drawdown']*100:.2f}%" if pd.notna(risk_metrics['max_drawdown']) else "N/A")
+r6.metric("β Beta (vs SPY)", f"{risk_metrics['beta']:.2f}" if pd.notna(risk_metrics['beta']) else "N/A")
+
+drawdown_fig = go.Figure()
+running_max = historical_performance['total_value'].cummax()
+drawdown = historical_performance['total_value'] / running_max - 1
+drawdown_fig.add_trace(go.Scatter(x=historical_performance['date'], y=drawdown, mode='lines+markers',
+                                   fill='tozeroy', name='Drawdown'))
+drawdown_fig.update_layout(title='Portfolio Drawdown', xaxis_title='Date', yaxis_title='Drawdown')
+st.plotly_chart(drawdown_fig, use_container_width=True)
+
 st.divider()
 
-data = {
-    "Ticker": list(my_portfolio['symbol'].unique()), 
-    "Allocation": [1 / my_portfolio['symbol'].nunique()] * my_portfolio['symbol'].nunique()
-}
-
-df_asset = pd.DataFrame(data)
+# Real per-symbol weight, not an equal-weight approximation — matters once the
+# portfolio construction stops being uniformly equal-weighted.
+df_asset = my_portfolio.drop_duplicates(subset='symbol')[['symbol', 'weight']].rename(
+    columns={'symbol': 'Ticker', 'weight': 'Allocation'}
+)
 
 fig = px.pie(
     df_asset, 
