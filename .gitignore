@@ -1,3 +1,5 @@
 .env
 .vscode
 __pycache__
+data/raw/historical_price.csv
+data/processed/processed_historical_price.csv
