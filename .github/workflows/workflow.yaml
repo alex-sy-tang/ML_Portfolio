@@ -9,6 +9,8 @@ on:
 jobs:
   run-data-pipeline:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed for the commit-and-push step below
     steps:
       - name: Checkout repo content
         uses: actions/checkout@v4
@@ -27,4 +29,16 @@ jobs:
         run: jupyter execute notebooks/ML_Portfolio_Management.ipynb
         shell: bash
 
-        
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Deliberately excludes historical_price.csv/processed_historical_price.csv:
+          # the full price panel is 100MB+ and re-written wholesale every run, which
+          # both risks exceeding GitHub's 100MB per-file push limit and would bloat
+          # repo history for no benefit — they're regenerable from yfinance, unlike
+          # the accumulated portfolio/performance state below.
+          git add data/processed/historical_performance.csv data/processed/stock_portfolio.csv data/processed/weekly_portfolio.csv data/raw/holdings.csv data/raw/spy_price.csv
+          git diff --staged --quiet || git commit -m "Automated pipeline update"
+          git push
+        shell: bash
