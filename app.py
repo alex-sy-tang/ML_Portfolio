@@ -77,12 +77,32 @@ spy_window = spy_df[(spy_df['date'] >= historical_performance['date'].min()) &
 spy_window['cumulative_return'] = spy_window['close'] / spy_window['close'].iloc[0] - 1
 
 equity_fig = go.Figure()
-equity_fig.add_trace(go.Scatter(x=historical_performance['date'], y=historical_performance['cumulative_return'],
-                                 mode='lines+markers', name='Portfolio'))
+
+# Split the portfolio line by source (live vs. backtest) so a simulated stretch is
+# never visually indistinguishable from genuinely tracked performance. Each segment
+# starts one row early (where possible) so the line stays visually continuous across
+# the live/backtest boundary instead of showing a gap.
+sources = historical_performance['source'].tolist()
+seg_bounds = [0] + [i for i in range(1, len(sources)) if sources[i] != sources[i - 1]] + [len(sources)]
+first_of_kind = {'Portfolio (live)': True, 'Portfolio (backtest)': True}
+for start, end in zip(seg_bounds[:-1], seg_bounds[1:]):
+    seg = historical_performance.iloc[max(0, start - 1):end]
+    label = 'Portfolio (backtest)' if sources[start] == 'backtest' else 'Portfolio (live)'
+    equity_fig.add_trace(go.Scatter(
+        x=seg['date'], y=seg['cumulative_return'], mode='lines+markers',
+        name=label, legendgroup=label, showlegend=first_of_kind.get(label, True),
+        line=dict(color='#1f77b4' if label == 'Portfolio (live)' else '#ff7f0e',
+                   dash='solid' if label == 'Portfolio (live)' else 'dash'),
+    ))
+    first_of_kind[label] = False
+
 equity_fig.add_trace(go.Scatter(x=spy_window['date'], y=spy_window['cumulative_return'],
                                  mode='lines', name='SPY', line=dict(dash='dot')))
 equity_fig.update_layout(title='Portfolio vs. SPY — Cumulative Return', xaxis_title='Date', yaxis_title='Cumulative Return')
 st.plotly_chart(equity_fig, use_container_width=True)
+if (historical_performance['source'] == 'backtest').any():
+    st.caption("Dashed orange segment is a walk-forward backtest simulation filling a "
+               "tracking gap (see docs), not genuinely tracked performance.")
 
 
 m1, m2, m3 = st.columns(3)
@@ -104,6 +124,10 @@ r4, r5, r6 = st.columns(3)
 r4.metric("📊 Volatility", f"{risk_metrics['volatility']*100:.2f}%" if pd.notna(risk_metrics['volatility']) else "N/A")
 r5.metric("🔻 Max Drawdown", f"{risk_metrics['max_drawdown']*100:.2f}%" if pd.notna(risk_metrics['max_drawdown']) else "N/A")
 r6.metric("β Beta (vs SPY)", f"{risk_metrics['beta']:.2f}" if pd.notna(risk_metrics['beta']) else "N/A")
+if (historical_performance['source'] == 'backtest').any():
+    n_backtest = (historical_performance['source'] == 'backtest').sum()
+    st.caption(f"{n_backtest} of {len(historical_performance)} weeks above are backtested, not live-tracked — "
+               "these metrics mix a real ~8-week track record with a 19-week simulation.")
 
 drawdown_fig = go.Figure()
 running_max = historical_performance['total_value'].cummax()

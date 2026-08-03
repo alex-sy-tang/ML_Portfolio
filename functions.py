@@ -63,11 +63,13 @@ def create_weekly_stock_portfolio(
     df_stock_portfolio.to_csv(DATA_DIR/'processed'/'stock_portfolio.csv', index = False)
     return df_stock_portfolio.reset_index(drop = True)
 
-def update_stock_portfolio(df_stock_portfolio: pd.DataFrame, df_historical_price: pd.DataFrame) -> pd.DataFrame:
-    # Anchor to the data's own latest date, not wall-clock datetime.now() — same
-    # staleness fix already applied to get_last_week_data() above. historical_price.csv
-    # isn't guaranteed to have been refreshed today, so "today" can match zero rows.
-    df_today_price = df_historical_price[df_historical_price['date'] == df_historical_price['date'].max()]
+def update_stock_portfolio(df_stock_portfolio: pd.DataFrame, df_historical_price: pd.DataFrame, week_date) -> pd.DataFrame:
+    # Price using the SAME date the stock selection actually came from, not whichever
+    # date is latest in the raw price panel. Those can silently diverge once a feature
+    # source (e.g. Fama-French) lags behind the raw price fetch — using the panel's
+    # own latest date would then mark a stale, unrebalanced selection to market with a
+    # much later date's prices and misreport it as a fresh decision.
+    df_today_price = df_historical_price[df_historical_price['date'] == pd.Timestamp(week_date)]
     if 'close' not in df_stock_portfolio.columns:
         df_stock_portfolio = pd.merge(df_stock_portfolio, df_today_price, on = 'symbol', how = 'left')
     return df_stock_portfolio.dropna()
@@ -77,37 +79,42 @@ def calculate_risk_metrics(hist_perf: pd.DataFrame, spy_df: pd.DataFrame, risk_f
     hist_perf['date'] = pd.to_datetime(hist_perf['date'])
     hist_perf = hist_perf.sort_values('date').reset_index(drop=True)
 
-    # Each daily_return value is a single calendar day's return (see
-    # calculate_portfolio_metrics()/historical_performance()) sampled once per
-    # pipeline run, not one return per elapsed day — so it's annualized with the
-    # standard 252 trading-day convention regardless of gaps between runs.
+    # Most rows now represent a full week's return, not a single trading day: the
+    # walk-forward backtest rows (see that notebook section) are the portfolio's
+    # realized weekly return, and weekly is also the design-intended live cadence
+    # going forward (wed_thurs_selector, weekly rebalance). Annualizing with the
+    # daily convention (252) — correct back when every row genuinely was one day's
+    # return — overstated Sharpe/Sortino/Volatility by ~2.2x (sqrt(252/52)) once
+    # the weekly backtest rows were added. A handful of legacy rows from early
+    # manual testing really are single-day returns, so 52 is an approximation for
+    # those specifically, but the right choice for the dataset's now-dominant,
+    # intended cadence.
     returns = hist_perf['daily_return']
-    trading_days_per_year = 252
+    periods_per_year = 52
 
     start_value, end_value = hist_perf['total_value'].iloc[0], hist_perf['total_value'].iloc[-1]
     years = (hist_perf['date'].iloc[-1] - hist_perf['date'].iloc[0]).days / 365.25
     cagr = (end_value / start_value) ** (1 / years) - 1 if years > 0 else np.nan
 
-    ann_vol = returns.std() * np.sqrt(trading_days_per_year)
+    ann_vol = returns.std() * np.sqrt(periods_per_year)
 
-    period_rf = risk_free_rate / trading_days_per_year
+    period_rf = risk_free_rate / periods_per_year
     excess_returns = returns - period_rf
-    sharpe = (excess_returns.mean() / returns.std()) * np.sqrt(trading_days_per_year) if returns.std() > 0 else np.nan
+    sharpe = (excess_returns.mean() / returns.std()) * np.sqrt(periods_per_year) if returns.std() > 0 else np.nan
 
     downside_std = returns[returns < 0].std()
-    sortino = (excess_returns.mean() / downside_std) * np.sqrt(trading_days_per_year) if downside_std > 0 else np.nan
+    sortino = (excess_returns.mean() / downside_std) * np.sqrt(periods_per_year) if downside_std > 0 else np.nan
 
     running_max = hist_perf['total_value'].cummax()
     max_drawdown = (hist_perf['total_value'] / running_max - 1).min()
 
-    # Beta pairs each daily_return against SPY's own same-day return (SPY's full
-    # daily series, inner-joined on date) rather than SPY's return since the
-    # previous historical_performance.csv row — that row can be months earlier
-    # whenever the pipeline skipped a run, which would otherwise pair a one-day
-    # portfolio move against a multi-month SPY move.
+    # Beta pairs each row against SPY's own return over the same ~1-week window (5
+    # trading days) ending on that date, rather than SPY's single-day return —
+    # same weekly-cadence reasoning as the annualization above, and the same
+    # approximation for the handful of single-day legacy rows.
     spy_df = spy_df.copy()
     spy_df['date'] = pd.to_datetime(spy_df['date'])
-    spy_df['spy_return'] = spy_df['close'].pct_change()
+    spy_df['spy_return'] = spy_df['close'].pct_change(periods=5)
     merged = pd.merge(hist_perf[['date', 'daily_return']], spy_df[['date', 'spy_return']], on='date', how='inner')
     beta = (merged['daily_return'].cov(merged['spy_return']) / merged['spy_return'].var()
             if len(merged) >= 2 and merged['spy_return'].var() > 0 else np.nan)
