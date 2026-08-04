@@ -16,8 +16,8 @@ except Exception as e:
     raise
 
 # Variables
-PROJECT_ROOT = Path(__file__).resolve().parent
-DATA_DIR = PROJECT_ROOT/'data'
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'src'))
+from ml_portfolio.config import PROJECT_ROOT, DATA_DIR
 
 # Load data from csv file
 def load_data(filename): 

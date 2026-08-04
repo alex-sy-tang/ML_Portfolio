@@ -9,8 +9,6 @@ from datetime import datetime, timedelta, date
 from functions import *
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-DATA_DIR = PROJECT_ROOT/'data'
 processed_data_filename = DATA_DIR/'processed'/'processed_historical_price.csv'
 raw_data_filename = DATA_DIR/'raw'/'historical_price.csv'
 
