@@ -38,42 +38,6 @@ def get_last_week_data(filename):
     latest_date = df['date'].max()
     return df[df['date'] == latest_date]
 
-def create_weekly_stock_portfolio(
-    symbols: pd.Series,
-    predicted_returns: pd.DataFrame,
-    top_n: int = 20,
-    long_only: bool = True,
-) -> pd.DataFrame:
-    if not long_only:
-        raise NotImplementedError("Short-side portfolio construction is not implemented yet.")
-
-    df_stock_portfolio = pd.concat(
-        [symbols.reset_index(drop=True), predicted_returns.reset_index(drop=True)], axis=1
-    )
-    df_stock_portfolio = df_stock_portfolio.sort_values(by='predicted_return', ascending=False)
-
-    # Fixed count rather than a quantile of the universe: a percentage-based cutoff
-    # silently changed size when the universe grew from 17 DJIA stocks to ~500 S&P
-    # 500 stocks (top 20% went from ~3 stocks to ~100), which is neither a legible
-    # pie-chart slice count nor a very selective long book.
-    cutoff = max(1, min(top_n, len(df_stock_portfolio)))
-    df_stock_portfolio = df_stock_portfolio.head(cutoff)
-
-    df_stock_portfolio['weight'] = 1 / len(df_stock_portfolio)
-    df_stock_portfolio.to_csv(DATA_DIR/'processed'/'stock_portfolio.csv', index = False)
-    return df_stock_portfolio.reset_index(drop = True)
-
-def update_stock_portfolio(df_stock_portfolio: pd.DataFrame, df_historical_price: pd.DataFrame, week_date) -> pd.DataFrame:
-    # Price using the SAME date the stock selection actually came from, not whichever
-    # date is latest in the raw price panel. Those can silently diverge once a feature
-    # source (e.g. Fama-French) lags behind the raw price fetch — using the panel's
-    # own latest date would then mark a stale, unrebalanced selection to market with a
-    # much later date's prices and misreport it as a fresh decision.
-    df_today_price = df_historical_price[df_historical_price['date'] == pd.Timestamp(week_date)]
-    if 'close' not in df_stock_portfolio.columns:
-        df_stock_portfolio = pd.merge(df_stock_portfolio, df_today_price, on = 'symbol', how = 'left')
-    return df_stock_portfolio.dropna()
-
 def calculate_risk_metrics(hist_perf: pd.DataFrame, spy_df: pd.DataFrame, risk_free_rate: float = 0.0) -> dict:
     hist_perf = hist_perf.copy()
     hist_perf['date'] = pd.to_datetime(hist_perf['date'])
