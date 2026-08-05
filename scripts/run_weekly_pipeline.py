@@ -47,7 +47,7 @@ from ml_portfolio.portfolio.tracking import (
     historical_performance,
     update_stock_portfolio,
 )
-from ml_portfolio.backtest.walk_forward import walk_forward_backtest
+from ml_portfolio.backtest.walk_forward import backfill_backtest_gap
 
 log = logging.getLogger("run_weekly_pipeline")
 
@@ -161,65 +161,6 @@ def track_performance(df_weekly_portfolio: pd.DataFrame, df_last_week: pd.DataFr
     return df_hist_perf
 
 
-def backfill_backtest_gap(processed_panel_path: Path) -> None:
-    # Idempotent: skips any week already present in historical_performance.csv, so
-    # this is a no-op once the gap (documented in the walk-forward backtest section
-    # of the notebook) is filled. Safe to run on every pipeline execution.
-    backtest_panel = pd.read_csv(processed_panel_path)
-    backtest_panel['date'] = pd.to_datetime(backtest_panel['date'])
-
-    gap_start, gap_end = pd.Timestamp('2026-01-16'), pd.Timestamp('2026-07-24')
-    candidate_weeks = sorted(
-        backtest_panel[(backtest_panel['date'] > gap_start) & (backtest_panel['date'] < gap_end)]['date'].unique()
-    )
-
-    hist_perf_file_path = DATA_DIR / 'processed' / 'historical_performance.csv'
-    if hist_perf_file_path.is_file():
-        existing_dates = set(pd.to_datetime(pd.read_csv(hist_perf_file_path)['date']))
-    else:
-        existing_dates = set()
-    gap_weeks = [w for w in candidate_weeks if w not in existing_dates]
-
-    if not gap_weeks:
-        log.info("Backtest gap already filled (or no candidate weeks) -- nothing to backtest")
-        return
-
-    log.info("Backtesting %d gap weeks: %s .. %s", len(gap_weeks), gap_weeks[0], gap_weeks[-1])
-    backtest_returns = walk_forward_backtest(backtest_panel, gap_weeks)
-
-    hist = pd.read_csv(hist_perf_file_path) if hist_perf_file_path.is_file() else pd.DataFrame(columns=['date', 'daily_return'])
-    hist['date'] = pd.to_datetime(hist['date'])
-    if 'source' not in hist.columns:
-        hist['source'] = pd.NA
-    hist['source'] = hist['source'].fillna('live')
-
-    backtest_returns_tagged = backtest_returns.copy()
-    backtest_returns_tagged['date'] = pd.to_datetime(backtest_returns_tagged['date'])
-    backtest_returns_tagged['source'] = 'backtest'
-
-    combined = pd.concat(
-        [hist[['date', 'daily_return', 'source']], backtest_returns_tagged[['date', 'daily_return', 'source']]],
-        ignore_index=True,
-    ).sort_values('date').reset_index(drop=True)
-    assert combined['date'].is_unique, "duplicate dates after splicing the backtest into historical_performance.csv"
-
-    init_value = 100000
-    combined['total_value'] = 0.0
-    combined['cumulative_return'] = 0.0
-    combined.loc[0, ['daily_return', 'total_value', 'cumulative_return']] = [0.0, init_value, 0.0]
-    for i in range(1, len(combined)):
-        prev_value = combined.loc[i - 1, 'total_value']
-        prev_cum = combined.loc[i - 1, 'cumulative_return']
-        r = combined.loc[i, 'daily_return']
-        combined.loc[i, 'total_value'] = prev_value * (1 + r)
-        combined.loc[i, 'cumulative_return'] = (1 + r) * (1 + prev_cum) - 1
-
-    combined = combined[['date', 'total_value', 'daily_return', 'cumulative_return', 'source']]
-    combined['date'] = combined['date'].dt.strftime('%Y-%m-%d')
-    combined.to_csv(hist_perf_file_path, index=False)
-    log.info("Wrote %d rows (%d backtested)", len(combined), (combined['source'] == 'backtest').sum())
-
-
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     load_dotenv(PROJECT_ROOT / '.env')
@@ -233,6 +174,7 @@ def main() -> None:
         ridge_model = train_model(df)
         df_weekly_portfolio, df_last_week = build_weekly_portfolio(ridge_model)
         track_performance(df_weekly_portfolio, df_last_week)
+        log.info("Backfilling any historical_performance.csv gap via walk-forward backtest")
         backfill_backtest_gap(DATA_DIR / 'processed' / 'processed_historical_price.csv')
     except Exception:
         log.exception("Weekly pipeline failed")

@@ -50,13 +50,24 @@ numbers it produces.
 ```
 ML_Portfolio/
 ├── app.py                     # Streamlit dashboard
-├── functions.py                # Functions shared with app.py (portfolio construction, tracking, risk metrics)
+├── functions.py                # Legacy helpers still used by app.py (risk metrics, symbol lookup)
+├── scripts/
+│   └── run_weekly_pipeline.py  # Production entrypoint: data → features → model → portfolio → tracking → backtest
+├── src/ml_portfolio/            # Reusable pipeline code, imported by the script, notebook, and app.py
+│   ├── config.py                 # PROJECT_ROOT / DATA_DIR / MODELS_DIR — one place
+│   ├── data/                     # universe.py, prices.py (fetching), io.py (load_data, get_last_week_data)
+│   ├── features/                 # engineering.py (calc_* factors), target.py
+│   ├── models/                   # pipeline.py (LogTransformer, build_*_pipeline), evaluate.py, train.py
+│   ├── portfolio/                # construction.py, tracking.py
+│   └── backtest/                 # walk_forward.py
 ├── notebooks/
-│   └── ML_Portfolio_Management.ipynb   # The full pipeline: data → features → model → portfolio → tracking → backtest
+│   └── research.ipynb            # Exploration only — imports ml_portfolio, never redefines it
+├── tests/                       # pytest suite for the modules above
 ├── data/
 │   ├── raw/                    # holdings.csv, spy_price.csv (tracked); historical_price.csv (gitignored — regenerable, 100MB+)
 │   └── processed/               # stock_portfolio.csv, weekly_portfolio.csv, historical_performance.csv (tracked);
 │                                  # processed_historical_price.csv (gitignored — regenerable, 60MB+)
+├── models/                      # Trained model artifacts (e.g. ridge_regression_model.sav)
 ├── docs/                       # Factor analysis, model comparison, and strategy discussion notes
 ├── .github/workflows/           # Scheduled pipeline (see below)
 └── requirements.txt
@@ -68,10 +79,17 @@ ML_Portfolio/
 pip install -r requirements.txt
 ```
 
-Run the notebook (`notebooks/ML_Portfolio_Management.ipynb`) top to bottom to
-(re)fetch data, engineer features, fit the model, build the current week's
-portfolio, and update `historical_performance.csv`. This can take a while — it
-fetches ~500 symbols of price history and fits several models.
+Run the production pipeline to (re)fetch data, engineer features, fit the model,
+build the current week's portfolio, and update `historical_performance.csv`. This
+can take a while — it fetches ~500 symbols of price history and fits a model:
+
+```bash
+python scripts/run_weekly_pipeline.py
+```
+
+`notebooks/research.ipynb` covers the same pipeline plus exploratory work (factor
+testing, model comparison, the walk-forward backtest writeup) cell by cell, useful
+for understanding *why* the pipeline is built this way, not for running it in CI.
 
 Then start the dashboard:
 
@@ -79,15 +97,21 @@ Then start the dashboard:
 streamlit run app.py
 ```
 
+Run the test suite with:
+
+```bash
+pytest
+```
+
 ## Automated pipeline (CI)
 
-[`.github/workflows/workflow.yaml`](.github/workflows/workflow.yaml) runs the
-notebook daily (17:30 UTC) and on manual dispatch, then commits and pushes the
-updated output files (`historical_performance.csv`, `stock_portfolio.csv`,
-`weekly_portfolio.csv`, `holdings.csv`, `spy_price.csv`) back to the repo. The raw
-and processed price panels are deliberately excluded from that commit and from git
-entirely — they're large, fully regenerable from yfinance, and gain nothing from
-being version-controlled.
+[`.github/workflows/workflow.yaml`](.github/workflows/workflow.yaml) runs
+`scripts/run_weekly_pipeline.py` daily (17:30 UTC) and on manual dispatch, then
+commits and pushes the updated output files (`historical_performance.csv`,
+`stock_portfolio.csv`, `weekly_portfolio.csv`, `holdings.csv`, `spy_price.csv`)
+back to the repo. The raw and processed price panels are deliberately excluded
+from that commit and from git entirely — they're large, fully regenerable from
+yfinance, and gain nothing from being version-controlled.
 
 ## Known limitations
 
