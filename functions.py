@@ -18,25 +18,14 @@ except Exception as e:
 # Variables
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'src'))
 from ml_portfolio.config import PROJECT_ROOT, DATA_DIR
-
-# Load data from csv file
-def load_data(filename): 
-    df = pd.read_csv(filename)
-    return df
+from ml_portfolio.data.io import load_data, get_last_week_data
 
 # Load the historical price of the selected symbol
-def load_symbol_price(filename, symbol): 
+def load_symbol_price(filename, symbol):
     df = load_data(filename)
     symbol_df = df[(df["symbol"] == symbol)]
 
     return symbol_df
-
-# Get the price data for the most recent past week
-def get_last_week_data(filename):
-    df = load_data(filename)
-    df['date'] = pd.to_datetime(df['date'])
-    latest_date = df['date'].max()
-    return df[df['date'] == latest_date]
 
 def calculate_risk_metrics(hist_perf: pd.DataFrame, spy_df: pd.DataFrame, risk_free_rate: float = 0.0) -> dict:
     hist_perf = hist_perf.copy()

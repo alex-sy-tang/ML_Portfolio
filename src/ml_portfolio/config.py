@@ -5,3 +5,4 @@ from pathlib import Path
 # each redefining PROJECT_ROOT/DATA_DIR separately.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
+MODELS_DIR = PROJECT_ROOT / "models"
