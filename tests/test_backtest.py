@@ -121,6 +121,80 @@ def test_walk_forward_backtest_turnover_matches_hand_computed_picks(monkeypatch)
     assert result['turnover'].iloc[3] == pytest.approx(0.5)
 
 
+def test_signal_decay_never_leaks_forward_returns_as_features(monkeypatch):
+    # The whole point of signal_decay_by_horizon is to score predictions against
+    # future data the model must never see at fit/predict time. This is the
+    # critical safety property: assert none of the fwd_return_* columns the
+    # function computes internally ever reach the pipeline.
+    dates = pd.to_datetime(['2026-01-07', '2026-01-14', '2026-01-21', '2026-01-28'])
+    rows = [
+        {'symbol': s, 'date': d, 'close': 100.0 + i, 'target': 0.01}
+        for i, d in enumerate(dates)
+        for s in ['AAA', 'BBB']
+    ]
+    panel = pd.DataFrame(rows)
+
+    seen_columns = []
+
+    class _ColumnRecordingPipeline:
+        def fit(self, X, y):
+            seen_columns.append(set(X.columns))
+            return self
+
+        def predict(self, X):
+            seen_columns.append(set(X.columns))
+            return np.zeros(len(X))
+
+    monkeypatch.setattr(wf_module, 'build_full_ridge_pipeline', lambda: _ColumnRecordingPipeline())
+
+    wf_module.signal_decay_by_horizon(panel, [dates[1], dates[2]], horizons=(1, 2))
+
+    assert seen_columns, "pipeline was never called"
+    for cols in seen_columns:
+        leaked = [c for c in cols if c.startswith('fwd_return_')]
+        assert not leaked, f"forward-return columns leaked into the model as features: {leaked}"
+
+
+def test_signal_decay_by_horizon_matches_hand_computed_ic(monkeypatch):
+    # 5 symbols, not 3 -- signal_decay_by_horizon requires >=5 valid pairs before
+    # computing an IC for a week/horizon (avoids a meaningless correlation on too
+    # few points), which a smaller synthetic panel would silently fall short of.
+    dates = pd.to_datetime(['2026-01-07', '2026-01-14', '2026-01-21', '2026-01-28'])
+    symbols = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE']
+    # w0=train-only, w1=evaluated week, w2/w3 supply the 1wk/2wk-forward prices.
+    w2_prices = {'AAA': 105.0, 'BBB': 110.0, 'CCC': 115.0, 'DDD': 120.0, 'EEE': 125.0}
+    w3_prices = {'AAA': 125.0, 'BBB': 120.0, 'CCC': 115.0, 'DDD': 110.0, 'EEE': 105.0}
+    prices = {s: {dates[0]: 100.0, dates[1]: 100.0, dates[2]: w2_prices[s], dates[3]: w3_prices[s]} for s in symbols}
+    rows = [
+        {'symbol': s, 'date': d, 'close': prices[s][d], 'target': 0.0}
+        for s in symbols for d in dates
+    ]
+    panel = pd.DataFrame(rows)
+
+    # Scripted predicted_return ranking at w1: AAA < BBB < CCC < DDD < EEE.
+    # Horizon 1 (w1->w2) realized-return ranking: AAA(5%) < BBB(10%) < CCC(15%) < DDD(20%) < EEE(25%)
+    #   -- same order as predicted -> IC = +1.
+    # Horizon 2 (w1->w3) realized-return ranking: EEE(5%) < DDD(10%) < CCC(15%) < BBB(20%) < AAA(25%)
+    #   -- exactly reversed -> IC = -1.
+    scores_at_w1 = {'AAA': 1, 'BBB': 2, 'CCC': 3, 'DDD': 4, 'EEE': 5}
+
+    class _ScriptedPipeline:
+        def fit(self, X, y):
+            return self
+
+        def predict(self, X):
+            return X['symbol'].map(scores_at_w1).values
+
+    monkeypatch.setattr(wf_module, 'build_full_ridge_pipeline', lambda: _ScriptedPipeline())
+
+    result = wf_module.signal_decay_by_horizon(panel, [dates[1]], horizons=(1, 2))
+
+    ic_h1 = result[result['horizon_weeks'] == 1]['ic'].iloc[0]
+    ic_h2 = result[result['horizon_weeks'] == 2]['ic'].iloc[0]
+    assert ic_h1 == pytest.approx(1.0)
+    assert ic_h2 == pytest.approx(-1.0)
+
+
 def test_apply_transaction_costs_charges_both_sides_of_turnover():
     daily_return = pd.Series([0.05, 0.03, -0.02])
     turnover = pd.Series([np.nan, 1.0, 0.5])
