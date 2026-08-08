@@ -7,25 +7,53 @@ from ml_portfolio.config import DATA_DIR
 from ml_portfolio.models.pipeline import build_full_ridge_pipeline
 
 
+def _weekly_picks(panel: pd.DataFrame, week, top_n: int) -> pd.DataFrame:
+    train_df = panel[panel['date'] < week]
+    predict_df = panel[panel['date'] == week]
+
+    pipeline = build_full_ridge_pipeline()
+    pipeline.fit(train_df.drop(columns=['target']), train_df['target'])
+    y_pred = pipeline.predict(predict_df.drop(columns=['target']))
+
+    return predict_df.assign(predicted_return=y_pred).sort_values('predicted_return', ascending=False).head(top_n)
+
+
 def walk_forward_backtest(panel: pd.DataFrame, weeks: list, top_n: int = 20) -> pd.DataFrame:
     results = []
+    prev_symbols = None
     for w in weeks:
-        train_df = panel[panel['date'] < w]
-        predict_df = panel[panel['date'] == w]
-
-        pipeline = build_full_ridge_pipeline()
-        pipeline.fit(train_df.drop(columns=['target']), train_df['target'])
-        y_pred = pipeline.predict(predict_df.drop(columns=['target']))
-
-        picks = predict_df.assign(predicted_return=y_pred).sort_values('predicted_return', ascending=False).head(top_n)
+        picks = _weekly_picks(panel, w, top_n)
         # picks['target'] is that week's already-realized weekly_log_return (known once
         # the week plays out) -- convert log return to simple return before averaging
         # across stocks, since only an asset's own log returns compound additively
         # across time, not across different assets at a single point in time.
         simple_returns = np.exp(picks['target']) - 1
-        results.append({'date': w, 'daily_return': simple_returns.mean()})
+
+        symbols = set(picks['symbol'])
+        # Turnover: fraction of the book replaced since the previous week (standard
+        # "portfolio turnover ratio" convention -- fully replacing all N names is
+        # 100% turnover, not 200%, since a name entering and a name exiting are the
+        # two halves of the same trade). First week has no prior portfolio to diff
+        # against, so its turnover is NaN, not 0 -- 0 would wrongly claim "no
+        # trading happened" rather than "not applicable."
+        if prev_symbols is None:
+            turnover = np.nan
+        else:
+            turnover = len(symbols - prev_symbols) / len(symbols)
+        prev_symbols = symbols
+
+        results.append({'date': w, 'daily_return': simple_returns.mean(), 'turnover': turnover})
 
     return pd.DataFrame(results)
+
+
+def apply_transaction_costs(daily_return: pd.Series, turnover: pd.Series, cost_bps_per_side: float = 7.5) -> pd.Series:
+    # cost_bps_per_side is charged on both halves of one unit of turnover -- the buy
+    # for each name entering and the sell for each name exiting -- so total cost per
+    # period is turnover * cost_bps_per_side * 2 (not turnover's own NaN first week,
+    # which has no trade to cost).
+    cost = turnover.fillna(0) * (cost_bps_per_side * 2) / 10000
+    return daily_return - cost
 
 
 def backfill_backtest_gap(processed_panel_path: Path, hist_perf_file_path: Path = None) -> None:
