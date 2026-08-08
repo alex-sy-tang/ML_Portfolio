@@ -39,7 +39,7 @@ APA,APA Corporation,Energy,Oil & Gas Exploration & Production
 APO,Apollo Global Management,Financials,Asset Management & Custody Banks
 AAPL,Apple Inc.,Information Technology,"Technology Hardware, Storage & Peripherals"
 AMAT,Applied Materials,Information Technology,Semiconductor Materials & Equipment
-APP,AppLovin,Information Technology,Application Software
+APP,AppLovin,Communication Services,Advertising
 APTV,Aptiv,Consumer Discretionary,Automotive Parts & Equipment
 ACGL,Arch Capital Group,Financials,Property & Casualty Insurance
 ADM,Archer Daniels Midland,Consumer Staples,Agricultural Products & Services
@@ -159,14 +159,13 @@ DOW,Dow Inc.,Materials,Commodity Chemicals
 DHI,D. R. Horton,Consumer Discretionary,Homebuilding
 DTE,DTE Energy,Utilities,Multi-Utilities
 DUK,Duke Energy,Utilities,Electric Utilities
-DD,DuPont,Materials,Specialty Chemicals
+DD,DuPont,Industrials,Industrial Conglomerates
 ETN,Eaton Corporation,Industrials,Electrical Components & Equipment
 EBAY,eBay Inc.,Consumer Discretionary,Broadline Retail
 ECHO,EchoStar,Communication Services,Wireless Telecommunication Services
 ECL,Ecolab,Materials,Specialty Chemicals
 EIX,Edison International,Utilities,Electric Utilities
 EW,Edwards Lifesciences,Health Care,Health Care Equipment
-EA,Electronic Arts,Communication Services,Interactive Home Entertainment
 ELV,Elevance Health,Health Care,Managed Health Care
 EME,Emcor,Industrials,Construction & Engineering
 EMR,Emerson Electric,Industrials,Electrical Components & Equipment
@@ -195,6 +194,7 @@ FAST,Fastenal,Industrials,Trading Companies & Distributors
 FRT,Federal Realty Investment Trust,Real Estate,Retail REITs
 FDX,FedEx,Industrials,Air Freight & Logistics
 FDXF,FedEx Freight,Industrials,Cargo Ground Transportation
+FERG,Ferguson Enterprises,Industrials,Building Products
 FIS,Fidelity National Information Services,Financials,Transaction & Payment Processing Services
 FITB,Fifth Third Bancorp,Financials,Regional Banks
 FSLR,First Solar,Information Technology,Semiconductors
