@@ -326,7 +326,7 @@ MCO,Moody's Corporation,Financials,Financial Exchanges & Data
 MS,Morgan Stanley,Financials,Investment Banking & Brokerage
 MOS,Mosaic Company (The),Materials,Fertilizers & Agricultural Chemicals
 MSI,Motorola Solutions,Information Technology,Communications Equipment
-MSCI,MSCI Inc.,Financials,Financial Exchanges & Data
+MSCI,MSCI,Financials,Financial Exchanges & Data
 NDAQ,"Nasdaq, Inc.",Financials,Financial Exchanges & Data
 NTAP,NetApp,Information Technology,"Technology Hardware, Storage & Peripherals"
 NFLX,Netflix,Communication Services,Movies & Entertainment
@@ -346,7 +346,7 @@ NUE,Nucor,Materials,Steel
 NVDA,Nvidia,Information Technology,Semiconductors
 NVR,"NVR, Inc.",Consumer Discretionary,Homebuilding
 NXPI,NXP Semiconductors,Information Technology,Semiconductors
-ORLY,O’Reilly Automotive,Consumer Discretionary,Automotive Retail
+ORLY,O'Reilly Automotive,Consumer Discretionary,Automotive Retail
 OXY,Occidental Petroleum,Energy,Oil & Gas Exploration & Production
 ODFL,Old Dominion,Industrials,Cargo Ground Transportation
 OMC,Omnicom Group,Communication Services,Advertising
@@ -393,7 +393,7 @@ REG,Regency Centers,Real Estate,Retail REITs
 REGN,Regeneron Pharmaceuticals,Health Care,Biotechnology
 RF,Regions Financial Corporation,Financials,Regional Banks
 RSG,Republic Services,Industrials,Environmental & Facilities Services
-RMD,ResMed,Health Care,Health Care Equipment
+RMD,ResMed|,Health Care,Health Care Equipment
 RVTY,Revvity,Health Care,Health Care Equipment
 HOOD,Robinhood Markets,Financials,Investment Banking & Brokerage
 ROK,Rockwell Automation,Industrials,Electrical Components & Equipment
