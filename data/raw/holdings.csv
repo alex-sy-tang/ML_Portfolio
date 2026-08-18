@@ -52,7 +52,6 @@ ATO,Atmos Energy,Utilities,Gas Utilities
 ADSK,Autodesk,Information Technology,Application Software
 ADP,Automatic Data Processing,Industrials,Human Resource & Employment Services
 AZO,AutoZone,Consumer Discretionary,Automotive Retail
-AVB,AvalonBay Communities,Real Estate,Multi-Family Residential REITs
 AVY,Avery Dennison,Materials,Paper & Plastic Packaging Products & Materials
 AXON,Axon Enterprise,Industrials,Aerospace & Defense
 BKR,Baker Hughes,Energy,Oil & Gas Equipment & Services
@@ -174,7 +173,6 @@ EOG,EOG Resources,Energy,Oil & Gas Exploration & Production
 EQT,EQT Corporation,Energy,Oil & Gas Exploration & Production
 EFX,Equifax,Industrials,Research & Consulting Services
 EQIX,Equinix,Real Estate,Data Center REITs
-EQR,Equity Residential,Real Estate,Multi-Family Residential REITs
 ERIE,Erie Indemnity,Financials,Insurance Brokers
 ESS,Essex Property Trust,Real Estate,Multi-Family Residential REITs
 EL,Estée Lauder Companies (The),Consumer Staples,Personal Care Products
@@ -387,6 +385,7 @@ DGX,Quest Diagnostics,Health Care,Health Care Services
 Q,Qnity Electronics,Information Technology,Semiconductor Materials & Equipment
 RL,Ralph Lauren Corporation,Consumer Discretionary,"Apparel, Accessories & Luxury Goods"
 RJF,Raymond James Financial,Financials,Investment Banking & Brokerage
+RDDT,Reddit,Communication Services,
 RTX,RTX Corporation,Industrials,Aerospace & Defense
 O,Realty Income,Real Estate,Retail REITs
 REG,Regency Centers,Real Estate,Retail REITs
